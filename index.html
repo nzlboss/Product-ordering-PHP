@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商品订购系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#FF7D00',
+                        neutral: {
+                            100: '#F5F7FA',
+                            200: '#E4E6EB',
+                            300: '#C9CDD4',
+                            400: '#86909C',
+                            500: '#4E5969',
+                            600: '#272E3B',
+                            700: '#1D2129',
+                        },
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .animate-fadeIn {
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            .animate-slideUp {
+                animation: slideUp 0.3s ease-out;
+            }
+            .animate-pulse-light {
+                animation: pulse-light 2s infinite;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideUp {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes pulse-light {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-neutral-100 text-neutral-700 min-h-screen flex flex-col">
+    <!-- 顶部导航栏 -->
+    <header id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-sm shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-1">
+                <i class="fa-solid fa-shopping-bag text-primary text-2xl"></i>
+                <span class="text-xl font-bold text-primary">商品订购系统</span>
+            </div>
+            
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#" class="text-neutral-600 hover:text-primary transition-colors">首页</a>
+                <a href="#" class="text-neutral-600 hover:text-primary transition-colors">商品分类</a>
+                <a href="#" class="text-neutral-600 hover:text-primary transition-colors">关于我们</a>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                    <i class="fa-solid fa-shopping-cart text-neutral-600"></i>
+                    <span id="cart-count" class="absolute -top-1 -right-1 bg-secondary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </button>
+                
+                <div id="user-menu" class="hidden md:block">
+                    <button id="profile-btn" class="flex items-center space-x-2 p-1 rounded-full hover:bg-neutral-100 transition-colors">
+                        <i class="fa-regular fa-user-circle text-neutral-600 text-xl"></i>
+                        <span id="user-name" class="text-neutral-600">未登录</span>
+                    </button>
+                </div>
+                
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-full hover:bg-neutral-100 transition-colors">
+                    <i class="fa-solid fa-bars text-neutral-600"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 移动端菜单 -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t animate-fadeIn">
+            <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
+                <a href="#" class="py-2 text-neutral-600 hover:text-primary transition-colors">首页</a>
+                <a href="#" class="py-2 text-neutral-600 hover:text-primary transition-colors">商品分类</a>
+                <a href="#" class="py-2 text-neutral-600 hover:text-primary transition-colors">关于我们</a>
+                <div id="mobile-user-menu" class="py-2 flex items-center space-x-2">
+                    <i class="fa-regular fa-user-circle text-neutral-600"></i>
+                    <span id="mobile-user-name" class="text-neutral-600">未登录</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow pt-16">
+        <!-- 登录/注册模态框 -->
+        <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 transform scale-95 transition-transform duration-300">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="auth-modal-title" class="text-2xl font-bold text-neutral-700">用户登录</h2>
+                        <button id="close-auth-modal" class="text-neutral-400 hover:text-neutral-600">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="auth-form" class="space-y-4">
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-neutral-600 mb-1">手机号</label>
+                            <input type="tel" id="phone" name="phone" class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all" placeholder="请输入手机号">
+                        </div>
+                        
+                        <div>
+                            <label for="security-code" class="block text-sm font-medium text-neutral-600 mb-1">安全码</label>
+                            <input type="password" id="security-code" name="security-code" class="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all" placeholder="请输入4位安全码">
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center">
+                            <span id="auth-btn-text">登录</span>
+                            <span id="auth-loading" class="hidden ml-2">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                            </span>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6 text-center">
+                        <p class="text-sm text-neutral-500">管理员账号：<span class="text-primary">admin</span>，安全码：<span class="text-primary">1234</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 购物车侧边栏 -->
+        <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full md:w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+            <div class="flex flex-col h-full">
+                <div class="p-6 border-b flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-neutral-700">购物车</h2>
+                    <button id="close-cart" class="text-neutral-400 hover:text-neutral-600">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                
+                <div id="cart-items" class="flex-grow overflow-y-auto p-4 space-y-4">
+                    <!-- 购物车为空提示 -->
+                    <div id="empty-cart" class="hidden flex flex-col items-center justify-center h-full">
+                        <i class="fa-solid fa-shopping-cart text-neutral-300 text-5xl mb-4"></i>
+                        <p class="text-neutral-500">购物车为空</p>
+                        <button id="start-shopping" class="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            开始购物
+                        </button>
+                    </div>
+                    
+                    <!-- 购物车商品列表 -->
+                    <div id="cart-items-list" class="space-y-4"></div>
+                </div>
+                
+                <div class="p-6 border-t">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-neutral-600">总计：</span>
+                        <span id="cart-total" class="text-xl font-bold text-neutral-800">¥0.00</span>
+                    </div>
+                    
+                    <button id="checkout-btn" class="w-full bg-secondary hover:bg-secondary/90 text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        结算
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 遮罩层 -->
+        <div id="overlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-300"></div>
+
+        <!-- 首页内容 -->
+        <div id="home-page" class="container mx-auto px-4 py-8">
+            <!-- 轮播图 -->
+            <div class="relative rounded-2xl overflow-hidden mb-8 shadow-lg h-64 md:h-80">
+                <div class="absolute inset-0 bg-gradient-to-r from-primary/80 to-primary/40 z-10"></div>
+                <img src="https://picsum.photos/id/1067/1200/400" alt="促销活动" class="w-full h-full object-cover">
+                <div class="absolute inset-0 z-20 flex flex-col justify-center px-8">
+                    <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-white mb-2">限时特惠</h2>
+                    <p class="text-[clamp(1rem,1.5vw,1.25rem)] text-white/90 mb-6">精选商品，低至五折</p>
+                    <button class="bg-white text-primary hover:bg-neutral-100 px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center w-fit">
+                        立即抢购
+                        <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 商品分类导航 -->
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-neutral-700 mb-4">商品分类</h3>
+                <div class="flex overflow-x-auto scrollbar-hide space-x-3 py-2">
+                    <button class="category-btn whitespace-nowrap px-4 py-2 bg-primary text-white rounded-full text-sm font-medium">
+                        全部商品
+                    </button>
+                    <button class="category-btn whitespace-nowrap px-4 py-2 bg-white text-neutral-600 hover:bg-neutral-100 rounded-full text-sm font-medium transition-colors">
+                        电子产品
+                    </button>
+                    <button class="category-btn whitespace-nowrap px-4 py-2 bg-white text-neutral-600 hover:bg-neutral-100 rounded-full text-sm font-medium transition-colors">
+                        家用电器
+                    </button>
+                    <button class="category-btn whitespace-nowrap px-4 py-2 bg-white text-neutral-600 hover:bg-neutral-100 rounded-full text-sm font-medium transition-colors">
+                        家居用品
+                    </button>
+                    <button class="category-btn whitespace-nowrap px-4 py-2 bg-white text-neutral-600 hover:bg-neutral-100 rounded-full text-sm font-medium transition-colors">
+                        个人护理
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 商品列表 -->
+            <h3 class="text-xl font-bold text-neutral-700 mb-4">热门商品</h3>
+            <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- 商品卡片将通过JavaScript动态加载 -->
+            </div>
+        </div>
+
+        <!-- 订单页内容 -->
+        <div id="orders-page" class="container mx-auto px-4 py-8 hidden">
+            <h2 class="text-2xl font-bold text-neutral-700 mb-6">我的订单</h2>
+            
+            <div id="orders-list" class="space-y-6">
+                <!-- 订单列表将通过JavaScript动态加载 -->
+            </div>
+        </div>
+
+        <!-- 订单详情页内容 -->
+        <div id="order-details-page" class="container mx-auto px-4 py-8 hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-neutral-700">订单详情</h2>
+                <button id="back-to-orders" class="text-primary hover:text-primary/80 flex items-center">
+                    <i class="fa-solid fa-arrow-left mr-2"></i>
+                    返回订单列表
+                </button>
+            </div>
+            
+            <div id="order-details-container" class="bg-white rounded-xl shadow-sm p-6">
+                <!-- 订单详情将通过JavaScript动态加载 -->
+            </div>
+        </div>
+
+        <!-- 管理后台 -->
+        <div id="admin-dashboard" class="hidden">
+            <div class="flex h-screen overflow-hidden">
+                <!-- 侧边栏 -->
+                <div class="bg-neutral-800 text-white w-64 flex-shrink-0 hidden md:block">
+                    <div class="p-6 border-b">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-cog text-primary text-2xl"></i>
+                            <span class="text-xl font-bold">管理后台</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <nav class="space-y-1">
+                            <a href="#" class="admin-nav-item flex items-center space-x-3 px-4 py-2.5 rounded-lg bg-primary/20 text-primary">
+                                <i class="fa-solid fa-tachometer-alt"></i>
+                                <span>控制台</span>
+                            </a>
+                            <a href="#" class="admin-nav-item flex items-center space-x-3 px-4 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
+                                <i class="fa-solid fa-list-alt"></i>
+                                <span>订单管理</span>
+                            </a>
+                            <a href="#" class="admin-nav-item flex items-center space-x-3 px-4 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
+                                <i class="fa-solid fa-boxes"></i>
+                                <span>商品管理</span>
+                            </a>
+                            <a href="#" class="admin-nav-item flex items-center space-x-3 px-4 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
+                                <i class="fa-solid fa-users"></i>
+                                <span>用户管理</span>
+                            </a>
+                            <a href="#" class="admin-nav-item flex items-center space-x-3 px-4 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-700 transition-colors">
+                                <i class="fa-solid fa-chart-line"></i>
+                                <span>数据统计</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+                
+                <!-- 主内容 -->
+                <div class="flex-1 overflow-y-auto bg-neutral-100">
+                    <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <button id="mobile-menu-toggle" class="md:hidden text-neutral-600 p-2 rounded-lg hover:bg-neutral-100">
+                                <i class="fa-solid fa-bars"></i>
+                            </button>
+                            <h2 class="ml-4 text-xl font-bold text-neutral-700">控制台</h2>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <div class="relative">
+                                <input type="text" placeholder="搜索..." class="pl-10 pr-4 py-2 rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400"></i>
+                            </div>
+                            
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-regular fa-user-circle text-neutral-600 text-xl"></i>
+                                <span class="text-neutral-700 font-medium">管理员</span>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    <main class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-primary">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-neutral-500 text-sm">今日订单</p>
+                                        <h3 class="text-3xl font-bold text-neutral-800 mt-1">24</h3>
+                                        <p class="text-green-500 text-sm mt-2 flex items-center">
+                                            <i class="fa-solid fa-arrow-up mr-1"></i> 12% <span class="text-neutral-500 ml-1">较昨日</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-primary/10 p-3 rounded-lg">
+                                        <i class="fa-solid fa-shopping-cart text-primary text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-secondary">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-neutral-500 text-sm">今日销售额</p>
+                                        <h3 class="text-3xl font-bold text-neutral-800 mt-1">¥12,850</h3>
+                                        <p class="text-green-500 text-sm mt-2 flex items-center">
+                                            <i class="fa-solid fa-arrow-up mr-1"></i> 8% <span class="text-neutral-500 ml-1">较昨日</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-secondary/10 p-3 rounded-lg">
+                                        <i class="fa-solid fa-credit-card text-secondary text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-neutral-500 text-sm">活跃用户</p>
+                                        <h3 class="text-3xl font-bold text-neutral-800 mt-1">156</h3>
+                                        <p class="text-green-500 text-sm mt-2 flex items-center">
+                                            <i class="fa-solid fa-arrow-up mr-1"></i> 23% <span class="text-neutral-500 ml-1">较昨日</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-green-500/10 p-3 rounded-lg">
+                                        <i class="fa-solid fa-users text-green-500 text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-purple-500">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-neutral-500 text-sm">商品总数</p>
+                                        <h3 class="text-3xl font-bold text-neutral-800 mt-1">86</h3>
+                                        <p class="text-neutral-500 text-sm mt-2 flex items-center">
+                                            <i class="fa-solid fa-minus mr-1"></i> 0% <span class="text-neutral-500 ml-1">较昨日</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-purple-500/10 p-3 rounded-lg">
+                                        <i class="fa-solid fa-box text-purple-500 text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="text-lg font-bold text-neutral-700">近期订单</h3>
+                                    <a href="#" class="text-primary hover:text-primary/80 text-sm">查看全部</a>
+                                </div>
+                                
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full">
+                                        <thead>
+                                            <tr class="border-b">
+                                                <th class="py-3 px-4 text-left text-sm font-medium text-neutral-500">订单号</th>
+                                                <th class="py-3 px-4 text-left text-sm font-medium text-neutral-500">用户</th>
+                                                <th class="py-3 px-4 text-left text-sm font-medium text-neutral-500">金额</th>
+                                                <th class="py-3 px-4 text-left text-sm font-medium text-neutral-500">状态</th>
+                                                <th class="py-3 px-4 text-left text-sm font-medium text-neutral-500">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-orders-table">
+                                            <!-- 订单数据将通过JavaScript动态加载 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-sm p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="text-lg font-bold text-neutral-700">用户统计</h3>
+                                    <a href="#" class="text-primary hover:text-primary/80 text-sm">查看全部</a>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center mr-3">
+                                                <i class="fa-solid fa-user text-neutral-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-neutral-800 font-medium">张三</p>
+                                                <p class="text-neutral-500 text-sm">138****5678</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">活跃</span>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center mr-3">
+                                                <i class="fa-solid fa-user text-neutral-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-neutral-800 font-medium">李四</p>
+                                                <p class="text-neutral-500 text-sm">139****1234</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">活跃</span>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center mr-3">
+                                                <i class="fa-solid fa-user text-neutral-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-neutral-800 font-medium">王五</p>
+                                                <p class="text-neutral-500 text-sm">137****8901</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">待激活</span>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center mr-3">
+                                                <i class="fa-solid fa-user text-neutral-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-neutral-800 font-medium">赵六</p>
+                                                <p class="text-neutral-500 text-sm">136****2345</p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs bg-neutral-100 text-neutral-800 rounded-full">未活跃</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-neutral-800 text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <i class="fa-solid fa-shopping-bag text-primary text-2xl"></i>
+                        <span class="text-xl font-bold">商品订购系统</span>
+                    </div>
+                    <p class="text-neutral-400 mb-4">提供便捷的商品订购服务，让购物更加简单。</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-neutral-400 hover:text-white transition-colors">
+                            <i class="fa-brands fa-weixin text-xl"></i>
+                        </a>
+                        <a href="#" class="text-neutral-400 hover:text-white transition-colors">
+                            <i class="fa-brands fa-weibo text-xl"></i>
+                        </a>
+                        <a href="#" class="text-neutral-400 hover:text-white transition-colors">
+                            <i class="fa-brands fa-instagram text-xl"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">快速链接</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">首页</a></li>
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">商品分类</a></li>
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">关于我们</a></li>
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">联系我们</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">客户服务</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">常见问题</a></li>
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">订单查询</a></li>
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">配送说明</a></li>
+                        <li><a href="#" class="text-neutral-400 hover:text-white transition-colors">退换政策</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">联系我们</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-map-marker-alt text-primary mt-1"></i>
+                            <span class="text-neutral-400">北京市朝阳区建国路88号</span>
+                        </li>
+                        <li class="flex items-center space-x-3">
+                            <i class="fa-solid fa-phone text-primary"></i>
+                            <span class="text-neutral-400">400-123-4567</span>
+                        </li>
+                        <li class="flex items-center space-x-3">
+                            <i class="fa-solid fa-envelope text-primary"></i>
+                            <span class="text-neutral-400">service@example.com</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-neutral-700 mt-8 pt-8 text-center text-neutral-500 text-sm">
+                <p>© 2025 商品订购系统 版权所有</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // 全局变量
+        let products = [];
+        let cart = [];
+        let currentUser = null;
+        
+        // DOM元素
+        const navbar = document.getElementById('navbar');
+        const productsGrid = document.getElementById('products-grid');
+        const cartBtn = document.getElementById('cart-btn');
+        const cartCount = document.getElementById('cart-count');
+        const cartSidebar = document.getElementById('cart-sidebar');
+        const closeCart = document.getElementById('close-cart');
+        const cartItems = document.getElementById('cart-items');
+        const cartItemsList = document.getElementById('cart-items-list');
+        const emptyCart = document.getElementById('empty-cart');
+        const cartTotal = document.getElementById('cart-total');
+        const checkoutBtn = document.getElementById('checkout-btn');
+        const startShopping = document.getElementById('start-shopping');
+        const authModal = document.getElementById('auth-modal');
+        const closeAuthModal = document.getElementById('close-auth-modal');
+        const authForm = document.getElementById('auth-form');
+        const authBtnText = document.getElementById('auth-btn-text');
+        const authLoading = document.getElementById('auth-loading');
+        const userMenu = document.getElementById('user-menu');
+        const userMobileMenu = document.getElementById('mobile-user-menu');
+        const userName = document.getElementById('user-name');
+        const mobileUserName = document.getElementById('mobile-user-name');
+        const profileBtn = document.getElementById('profile-btn');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const overlay = document.getElementById('overlay');
+        const homePage = document.getElementById('home-page');
+        const ordersPage = document.getElementById('orders-page');
+        const orderDetailsPage = document.getElementById('order-details-page');
+        const ordersList = document.getElementById('orders-list');
+        const orderDetailsContainer = document.getElementById('order-details-container');
+        const backToOrders = document.getElementById('back-to-orders');
+        const adminDashboard = document.getElementById('admin-dashboard');
+        const adminOrdersTable = document.getElementById('admin-orders-table');
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            // 检查用户会话
+            checkSession();
+            
+            // 加载商品数据
+            loadProducts();
+            
+            // 加载用户订单（如果已登录）
+            if (currentUser) {
+                loadUserOrders();
+            }
+            
+            // 管理员登录后加载订单数据
+            if (currentUser && currentUser.role === 'admin') {
+                loadAdminOrders();
+            }
+            
+            // 监听滚动事件，改变导航栏样式
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 10) {
+                    navbar.classList.add('shadow-md');
+                    navbar.classList.remove('shadow-sm');
+                } else {
+                    navbar.classList.remove('shadow-md');
+                    navbar.classList.add('shadow-sm');
+                }
+            });
+            
+            // 购物车相关事件
+            cartBtn.addEventListener('click', toggleCart);
+            closeCart.addEventListener('click', toggleCart);
+            overlay.addEventListener('click', () => {
+                toggleCart(false);
+                toggleAuthModal(false);
+            });
+            startShopping.addEventListener('click', toggleCart);
+            
+            // 登录/注册模态框相关事件
+            profileBtn.addEventListener('click', () => {
+                if (currentUser) {
+                    // 已登录，显示用户菜单
+                } else {
+                    // 未登录，显示登录模态框
+                    toggleAuthModal(true);
+                }
+            });
+            closeAuthModal.addEventListener('click', () => toggleAuthModal(false));
+            authForm.addEventListener('submit', handleAuth);
+            
+            // 移动端菜单相关事件
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            // 订单相关事件
+            backToOrders.addEventListener('click', () => {
+                orderDetailsPage.classList.add('hidden');
+                if (currentUser.role === 'admin') {
+                    adminDashboard.classList.remove('hidden');
+                } else {
+                    ordersPage.classList.remove('hidden');
+                }
+            });
+            
+            // 管理员菜单相关事件
+            mobileMenuToggle.addEventListener('click', () => {
+                const sidebar = document.querySelector('.bg-neutral-800');
+                sidebar.classList.toggle('hidden');
+                sidebar.classList.toggle('block');
+            });
+            
+            // 分类按钮点击事件
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.category-btn').forEach(b => {
+                        b.classList.remove('bg-primary', 'text-white');
+                        b.classList.add('bg-white', 'text-neutral-600', 'hover:bg-neutral-100');
+                    });
+                    btn.classList.remove('bg-white', 'text-neutral-600', 'hover:bg-neutral-100');
+                    btn.classList.add('bg-primary', 'text-white');
+                    
+                    // 这里可以添加分类筛选逻辑
+                });
+            });
+        });
+        
+        // 检查用户会话
+        function checkSession() {
+            // 实际应用中应该通过AJAX请求后端检查会话
+            // 这里为了演示，直接从localStorage中获取
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                currentUser = JSON.parse(userData);
+                updateUserUI();
+                
+                if (currentUser.role === 'admin') {
+                    showAdminDashboard();
+                }
+            }
+        }
+        
+        // 更新用户界面
+        function updateUserUI() {
+            if (currentUser) {
+                userName.textContent = currentUser.name || currentUser.phone;
+                mobileUserName.textContent = currentUser.name || currentUser.phone;
+                
+                // 添加"我的订单"菜单项
+                const orderMenuItem = document.createElement('a');
+                orderMenuItem.href = '#';
+                orderMenuItem.className = 'py-2 text-neutral-600 hover:text-primary transition-colors';
+                orderMenuItem.textContent = '我的订单';
+                orderMenuItem.addEventListener('click', () => {
+                    if (currentUser.role === 'admin') {
+                        showAdminDashboard();
+                    } else {
+                        showOrdersPage();
+                    }
+                });
+                
+                // 如果还没有添加"我的订单"菜单项，则添加
+                if (!document.querySelector('.my-orders-item')) {
+                    orderMenuItem.classList.add('my-orders-item');
+                    
+                    // 桌面端菜单
+                    const desktopMenu = userMenu.querySelector('div');
+                    if (desktopMenu) {
+                        desktopMenu.parentNode.insertBefore(orderMenuItem.cloneNode(true), desktopMenu);
+                    }
+                    
+                    // 移动端菜单
+                    const mobileMenuItems = mobileMenu.querySelector('div');
+                    if (mobileMenuItems) {
+                        mobileMenuItems.appendChild(orderMenuItem.cloneNode(true));
+                    }
+                }
+                
+                // 添加"退出登录"菜单项
+                const logoutMenuItem = document.createElement('a');
+                logoutMenuItem.href = '#';
+                logoutMenuItem.className = 'py-2 text-neutral-600 hover:text-primary transition-colors';
+                logoutMenuItem.textContent = '退出登录';
+                logoutMenuItem.addEventListener('click', logout);
+                
+                // 如果还没有添加"退出登录"菜单项，则添加
+                if (!document.querySelector('.logout-item')) {
+                    logoutMenuItem.classList.add('logout-item');
+                    
+                    // 桌面端菜单
+                    const desktopMenu = userMenu.querySelector('div');
+                    if (desktopMenu) {
+                        desktopMenu.parentNode.appendChild(logoutMenuItem.cloneNode(true));
+                    }
+                    
+                    // 移动端菜单
+                    const mobileMenuItems = mobileMenu.querySelector('div');
+                    if (mobileMenuItems) {
+                        mobileMenuItems.appendChild(logoutMenuItem.cloneNode(true));
+                    }
+                }
+            } else {
+                userName.textContent = '未登录';
+                mobileUserName.textContent = '未登录';
+                
+                // 移除"我的订单"和"退出登录"菜单项
+                document.querySelectorAll('.my-orders-item, .logout-item').forEach(item => {
+                    item.remove();
+                });
+            }
+        }
+        
+        // 登录处理
+        function handleAuth(e) {
+            e.preventDefault();
+            
+            const phone = document.getElementById('phone').value;
+            const securityCode = document.getElementById('security-code').value;
+            
+            if (!phone || !securityCode) {
+                showToast('请输入手机号和安全码');
+                return;
+            }
+            
+            // 显示加载状态
+            authBtnText.textContent = '登录中...';
+            authLoading.classList.remove('hidden');
+            
+            // 模拟登录请求
+            setTimeout(() => {
+                // 实际应用中应该发送AJAX请求到后端验证
+                // 这里为了演示，直接模拟登录成功
+                currentUser = {
+                    id: 1,
+                    phone: phone,
+                    name: phone === 'admin' ? '管理员' : '用户',
+                    role: phone === 'admin' ? 'admin' : 'user'
+                };
+                
+                // 保存用户信息到localStorage
+                localStorage.setItem('user', JSON.stringify(currentUser));
+                
+                // 更新UI
+                updateUserUI();
+                
+                // 隐藏登录模态框
+                toggleAuthModal(false);
+                
+                // 显示成功提示
+                showToast('登录成功');
+                
+                // 重置表单
+                authForm.reset();
+                authBtnText.textContent = '登录';
+                authLoading.classList.add('hidden');
+                
+                // 如果是管理员，显示管理后台
+                if (currentUser.role === 'admin') {
+                    showAdminDashboard();
+                    loadAdminOrders();
+                } else {
+                    // 普通用户加载订单
+                    loadUserOrders();
+                }
+            }, 1000);
+        }
+        
+        // 退出登录
+        function logout() {
+            // 移除localStorage中的用户信息
+            localStorage.removeItem('user');
+            
+            // 重置当前用户
+            currentUser = null;
+            
+            // 更新UI
+            updateUserUI();
+            
+            // 隐藏管理后台和订单页，显示首页
+            adminDashboard.classList.add('hidden');
+            ordersPage.classList.add('hidden');
+            orderDetailsPage.classList.add('hidden');
+            homePage.classList.remove('hidden');
+            
+            // 显示提示
+            showToast('已退出登录');
+        }
+        
+        // 加载商品数据
+        function loadProducts() {
+            // 实际应用中应该通过AJAX请求后端获取商品数据
+            // 这里为了演示，使用模拟数据
+            
+            // 从API获取商品数据
+            fetch('api/products.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        products = data.data;
+                        renderProducts();
+                    } else {
+                        showToast('加载商品失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('加载商品失败');
+                });
+        }
+        
+        // 渲染商品列表
+        function renderProducts() {
+            productsGrid.innerHTML = '';
+            
+            if (products.length === 0) {
+                productsGrid.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fa-solid fa-box-open text-neutral-30<i class="fa-solid fa-box-open text-neutral-300 text-5xl mb-4"></i>
+                        <p class="text-neutral-500">暂无商品</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'bg-white rounded-xl shadow-sm overflow-hidden transform hover:shadow-md hover:-translate-y-1 transition-all duration-300';
+                productCard.innerHTML = `
+                    <div class="relative h-48 overflow-hidden">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                        ${product.status === 'unavailable' ? '<div class="absolute inset-0 bg-black/40 flex items-center justify-center"><span class="bg-red-500 text-white px-4 py-1 rounded-full">已售罄</span></div>' : ''}
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-neutral-800">${product.name}</h3>
+                            <span class="text-primary font-bold">¥${product.price}</span>
+                        </div>
+                        <p class="text-neutral-500 text-sm mb-4 line-clamp-2">${product.description}</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-neutral-400">${product.category}</span>
+                            <button 
+                                class="add-to-cart-btn px-3 py-1.5 bg-primary text-white rounded-lg text-sm hover:bg-primary/90 transition-colors flex items-center"
+                                data-id="${product.id}"
+                                ${product.status === 'unavailable' ? 'disabled' : ''}
+                            >
+                                <i class="fa-solid fa-shopping-cart mr-1"></i> 加入购物车
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                productsGrid.appendChild(productCard);
+                
+                // 添加到购物车按钮事件
+                const addToCartBtn = productCard.querySelector('.add-to-cart-btn');
+                if (addToCartBtn && !addToCartBtn.disabled) {
+                    addToCartBtn.addEventListener('click', () => {
+                        addToCart(product.id);
+                    });
+                }
+            });
+        }
+        
+        // 添加商品到购物车
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            
+            if (!product) {
+                showToast('商品不存在');
+                return;
+            }
+            
+            if (!currentUser) {
+                toggleAuthModal(true);
+                return;
+            }
+            
+            // 检查商品是否已在购物车中
+            const cartItem = cart.find(item => item.id === productId);
+            
+            if (cartItem) {
+                // 已在购物车中，增加数量
+                cartItem.quantity += 1;
+            } else {
+                // 不在购物车中，添加新商品
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    image: product.image,
+                    quantity: 1
+                });
+            }
+            
+            // 更新购物车UI
+            updateCartUI();
+            
+            // 显示成功提示
+            showToast('已添加到购物车');
+        }
+        
+        // 更新购物车UI
+        function updateCartUI() {
+            // 更新购物车数量
+            const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            
+            // 更新购物车列表
+            if (cart.length === 0) {
+                cartItemsList.innerHTML = '';
+                cartItemsList.classList.add('hidden');
+                emptyCart.classList.remove('hidden');
+                cartTotal.textContent = '¥0.00';
+                checkoutBtn.disabled = true;
+            } else {
+                cartItemsList.innerHTML = '';
+                cartItemsList.classList.remove('hidden');
+                emptyCart.classList.add('hidden');
+                
+                let totalPrice = 0;
+                
+                cart.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    totalPrice += itemTotal;
+                    
+                    const cartItemElement = document.createElement('div');
+                    cartItemElement.className = 'flex items-start space-x-3 p-3 border rounded-lg animate-fadeIn';
+                    cartItemElement.innerHTML = `
+                        <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <div class="flex justify-between">
+                                <h4 class="font-medium text-neutral-800">${item.name}</h4>
+                                <button class="remove-from-cart text-neutral-400 hover:text-red-500" data-id="${item.id}">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="flex justify-between items-center mt-2">
+                                <div class="flex items-center border rounded">
+                                    <button class="quantity-btn minus px-2 py-1 hover:bg-neutral-100" data-id="${item.id}">
+                                        <i class="fa-solid fa-minus text-xs"></i>
+                                    </button>
+                                    <span class="px-3">${item.quantity}</span>
+                                    <button class="quantity-btn plus px-2 py-1 hover:bg-neutral-100" data-id="${item.id}">
+                                        <i class="fa-solid fa-plus text-xs"></i>
+                                    </button>
+                                </div>
+                                <span class="font-medium">¥${itemTotal.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    cartItemsList.appendChild(cartItemElement);
+                    
+                    // 移除商品按钮事件
+                    const removeBtn = cartItemElement.querySelector('.remove-from-cart');
+                    removeBtn.addEventListener('click', () => {
+                        removeFromCart(item.id);
+                    });
+                    
+                    // 减少数量按钮事件
+                    const minusBtn = cartItemElement.querySelector('.minus');
+                    minusBtn.addEventListener('click', () => {
+                        decreaseQuantity(item.id);
+                    });
+                    
+                    // 增加数量按钮事件
+                    const plusBtn = cartItemElement.querySelector('.plus');
+                    plusBtn.addEventListener('click', () => {
+                        increaseQuantity(item.id);
+                    });
+                });
+                
+                // 更新总计
+                cartTotal.textContent = `¥${totalPrice.toFixed(2)}`;
+                checkoutBtn.disabled = false;
+            }
+        }
+        
+        // 从购物车移除商品
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartUI();
+            showToast('已从购物车移除');
+        }
+        
+        // 减少商品数量
+        function decreaseQuantity(productId) {
+            const cartItem = cart.find(item => item.id === productId);
+            
+            if (cartItem) {
+                if (cartItem.quantity > 1) {
+                    cartItem.quantity -= 1;
+                } else {
+                    // 数量为1时，移除商品
+                    cart = cart.filter(item => item.id !== productId);
+                }
+                
+                updateCartUI();
+            }
+        }
+        
+        // 增加商品数量
+        function increaseQuantity(productId) {
+            const cartItem = cart.find(item => item.id === productId);
+            
+            if (cartItem) {
+                cartItem.quantity += 1;
+                updateCartUI();
+            }
+        }
+        
+        // 切换购物车显示/隐藏
+        function toggleCart(show = null) {
+            if (show === null) {
+                cartSidebar.classList.toggle('translate-x-full');
+            } else if (show) {
+                cartSidebar.classList.remove('translate-x-full');
+            } else {
+                cartSidebar.classList.add('translate-x-full');
+            }
+            
+            overlay.classList.toggle('hidden', !show);
+            setTimeout(() => {
+                overlay.classList.toggle('opacity-0', !show);
+            }, 10);
+        }
+        
+        // 切换登录模态框显示/隐藏
+        function toggleAuthModal(show = null) {
+            if (show === null) {
+                authModal.classList.toggle('opacity-0');
+                authModal.classList.toggle('pointer-events-none');
+            } else if (show) {
+                authModal.classList.remove('opacity-0');
+                authModal.classList.remove('pointer-events-none');
+            } else {
+                authModal.classList.add('opacity-0');
+                authModal.classList.add('pointer-events-none');
+            }
+            
+            overlay.classList.toggle('hidden', !show);
+            setTimeout(() => {
+                overlay.classList.toggle('opacity-0', !show);
+            }, 10);
+        }
+        
+        // 显示提示消息
+        function showToast(message) {
+            // 检查是否已存在toast元素
+            let toast = document.querySelector('.toast-notification');
+            
+            if (!toast) {
+                // 创建toast元素
+                toast = document.createElement('div');
+                toast.className = 'toast-notification fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-neutral-800 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center opacity-0 transition-opacity duration-300';
+                toast.innerHTML = `
+                    <i class="fa-solid fa-check-circle mr-2 text-green-400"></i>
+                    <span class="toast-message">消息内容</span>
+                `;
+                document.body.appendChild(toast);
+            }
+            
+            // 更新消息内容
+            toast.querySelector('.toast-message').textContent = message;
+            
+            // 显示toast
+            toast.classList.remove('opacity-0');
+            
+            // 3秒后隐藏toast
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+        
+        // 显示订单页面
+        function showOrdersPage() {
+            if (!currentUser) {
+                toggleAuthModal(true);
+                return;
+            }
+            
+            homePage.classList.add('hidden');
+            ordersPage.classList.remove('hidden');
+            orderDetailsPage.classList.add('hidden');
+            adminDashboard.classList.add('hidden');
+            
+            loadUserOrders();
+        }
+        
+        // 加载用户订单
+        function loadUserOrders() {
+            if (!currentUser) {
+                return;
+            }
+            
+            // 从API获取订单数据
+            fetch('api/orders.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderUserOrders(data.data);
+                    } else {
+                        showToast('加载订单失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('加载订单失败');
+                });
+        }
+        
+        // 渲染用户订单列表
+        function renderUserOrders(orders) {
+            ordersList.innerHTML = '';
+            
+            if (orders.length === 0) {
+                ordersList.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fa-solid fa-file-invoice text-neutral-300 text-5xl mb-4"></i>
+                        <p class="text-neutral-500">暂无订单</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            orders.forEach(order => {
+                const orderElement = document.createElement('div');
+                orderElement.className = 'bg-white rounded-xl shadow-sm overflow-hidden';
+                orderElement.innerHTML = `
+                    <div class="p-4 border-b flex justify-between items-center">
+                        <div>
+                            <span class="text-neutral-500 text-sm">订单号:</span>
+                            <span class="font-medium ml-2">${order.order_number}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-neutral-500 text-sm">创建时间:</span>
+                            <span class="ml-2">${order.created_at}</span>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <span class="text-neutral-500">订单状态:</span>
+                                <span class="ml-2 ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
+                            </div>
+                            <div>
+                                <span class="text-neutral-500">总计:</span>
+                                <span class="ml-2 font-bold text-primary">¥${order.total_amount}</span>
+                            </div>
+                        </div>
+                        <button class="view-order-details w-full py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors" data-id="${order.id}">
+                            查看详情
+                        </button>
+                    </div>
+                `;
+                
+                ordersList.appendChild(orderElement);
+                
+                // 查看详情按钮事件
+                const viewDetailsBtn = orderElement.querySelector('.view-order-details');
+                viewDetailsBtn.addEventListener('click', () => {
+                    loadOrderDetails(order.id);
+                });
+            });
+        }
+        
+        // 获取订单状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待支付',
+                'paid': '已支付',
+                'shipped': '已发货',
+                'completed': '已完成',
+                'cancelled': '已取消'
+            };
+            return statusMap[status] || status;
+        }
+        
+        // 获取订单状态样式类
+        function getStatusClass(status) {
+            const statusClassMap = {
+                'pending': 'text-yellow-500',
+                'paid': 'text-blue-500',
+                'shipped': 'text-purple-500',
+                'completed': 'text-green-500',
+                'cancelled': 'text-red-500'
+            };
+            return statusClassMap[status] || '';
+        }
+        
+        // 加载订单详情
+        function loadOrderDetails(orderId) {
+            // 实际应用中应该通过AJAX请求后端获取订单详情
+            // 这里为了演示，使用模拟数据
+            
+            homePage.classList.add('hidden');
+            ordersPage.classList.add('hidden');
+            orderDetailsPage.classList.remove('hidden');
+            adminDashboard.classList.add('hidden');
+            
+            // 显示加载状态
+            orderDetailsContainer.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+                    <p class="text-neutral-500 mt-4">加载中...</p>
+                </div>
+            `;
+            
+            // 模拟加载延迟
+            setTimeout(() => {
+                // 实际应用中应该从API获取订单详情
+                // 这里为了演示，使用模拟数据
+                const orderDetails = {
+                    id: orderId,
+                    order_number: 'OD2025052112345678',
+                    created_at: '2025-05-21 12:34:56',
+                    status: 'paid',
+                    total_amount: 1998.00,
+                    items: [
+                        {
+                            id: 1,
+                            name: '高级智能手表',
+                            price: 1299.00,
+                            image: 'https://picsum.photos/id/160/400/300',
+                            quantity: 1
+                        },
+                        {
+                            id: 3,
+                            name: '无线蓝牙耳机',
+                            price: 799.00,
+                            image: 'https://picsum.photos/id/26/400/300',
+                            quantity: 1
+                        }
+                    ]
+                };
+                
+                renderOrderDetails(orderDetails);
+            }, 800);
+        }
+        
+        // 渲染订单详情
+        function renderOrderDetails(order) {
+            orderDetailsContainer.innerHTML = `
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-neutral-700">订单 #${order.order_number}</h3>
+                        <span class="px-3 py-1 rounded-full ${getStatusClass(order.status)} bg-${getStatusClass(order.status).replace('text-', '')}/10">
+                            ${getStatusText(order.status)}
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <h4 class="text-neutral-500 text-sm mb-2">订单信息</h4>
+                            <div class="space-y-1">
+                                <p><span class="text-neutral-500">订单号:</span> ${order.order_number}</p>
+                                <p><span class="text-neutral-500">创建时间:</span> ${order.created_at}</p>
+                                <p><span class="text-neutral-500">支付方式:</span> 在线支付</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-neutral-500 text-sm mb-2">收货信息</h4>
+                            <div class="space-y-1">
+                                <p><span class="text-neutral-500">收货人:</span> 张三</p>
+                                <p><span class="text-neutral-500">电话:</span> 138****5678</p>
+                                <p><span class="text-neutral-500">地址:</span> 北京市朝阳区建国路88号</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-neutral-500 text-sm mb-2">配送信息</h4>
+                            <div class="space-y-1">
+                                <p><span class="text-neutral-500">物流公司:</span> 顺丰速运</p>
+                                <p><span class="text-neutral-500">运单号码:</span> SF1234567890123</p>
+                                <p><span class="text-neutral-500">预计送达:</span> 2025-05-23</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border-t pt-6">
+                    <h3 class="text-lg font-bold text-neutral-700 mb-4">商品信息</h3>
+                    
+                    <div class="space-y-4">
+                        ${order.items.map(item => `
+                            <div class="flex items-start space-x-4 p-3 border rounded-lg">
+                                <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-lg">
+                                <div class="flex-1">
+                                    <h4 class="font-medium text-neutral-800">${item.name}</h4>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <span class="text-neutral-500">x${item.quantity}</span>
+                                        <span class="font-medium">¥${(item.price * item.quantity).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="border-t pt-6 mt-6">
+                    <div class="flex justify-end space-x-8">
+                        <div class="text-right">
+                            <p class="mb-2"><span class="text-neutral-500">商品总价:</span> ¥${order.total_amount.toFixed(2)}</p>
+                            <p class="mb-2"><span class="text-neutral-500">运费:</span> ¥0.00</p>
+                            <p class="mb-2"><span class="text-neutral-500">优惠:</span> ¥0.00</p>
+                            <p class="mt-4 text-lg font-bold"><span class="text-neutral-700">实付款:</span> <span class="text-primary">¥${order.total_amount.toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border-t pt-6 mt-6 flex justify-end space-x-4">
+                    ${order.status === 'pending' ? `
+                        <button class="px-6 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors">
+                            取消订单
+                        </button>
+                        <button class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            立即支付
+                        </button>
+                    ` : order.status === 'paid' ? `
+                        <button class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            查看物流
+                        </button>
+                    ` : order.status === 'shipped' ? `
+                        <button class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            确认收货
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        // 显示管理后台
+        function showAdminDashboard() {
+            if (!currentUser || currentUser.role !== 'admin') {
+                toggleAuthModal(true);
+                return;
+            }
+            
+            homePage.classList.add('hidden');
+            ordersPage.classList.add('hidden');
+            orderDetailsPage.classList.add('hidden');
+            adminDashboard.classList.remove('hidden');
+            
+            loadAdminOrders();
+        }
+        
+        // 加载管理员订单数据
+        function loadAdminOrders() {
+            if (!currentUser || currentUser.role !== 'admin') {
+                return;
+            }
+            
+            // 从API获取订单数据
+            fetch('admin/api/orders.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderAdminOrders(data.data);
+                    } else {
+                        showToast('加载订单失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('加载订单失败');
+                });
+        }
+        
+        // 渲染管理员订单列表
+        function renderAdminOrders(orders) {
+            adminOrdersTable.innerHTML = '';
+            
+            if (orders.length === 0) {
+                adminOrdersTable.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-6 text-center text-neutral-500">暂无订单</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            orders.forEach(order => {
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-neutral-50 transition-colors';
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-sm">${order.order_number}</td>
+                    <td class="py-3 px-4 text-sm">${order.user_name} (${order.phone})</td>
+                    <td class="py-3 px-4 text-sm font-medium">¥${order.total_amount}</td>
+                    <td class="py-3 px-4">
+                        <select class="order-status-select px-3 py-1 border rounded-lg text-sm" data-id="${order.id}" data-status="${order.status}">
+                            <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>待支付</option>
+                            <option value="paid" ${order.status === 'paid' ? 'selected' : ''}>已支付</option>
+                            <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>已发货</option>
+                            <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>已完成</option>
+                            <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>已取消</option>
+                        </select>
+                    </td>
+                    <td class="py-3 px-4">
+                        <button class="view-order-details text-primary hover:text-primary/80 text-sm" data-id="${order.id}">
+                            查看详情
+                        </button>
+                    </td>
+                `;
+                
+                adminOrdersTable.appendChild(row);
+                
+                // 查看详情按钮事件
+                const viewDetailsBtn = row.querySelector('.view-order-details');
+                viewDetailsBtn.addEventListener('click', () => {
+                    loadOrderDetails(order.id);
+                });
+                
+                // 状态选择框事件
+                const statusSelect = row.querySelector('.order-status-select');
+                statusSelect.addEventListener('change', () => {
+                    updateOrderStatus(order.id, statusSelect.value);
+                });
+            });
+        }
+        
+        // 更新订单状态
+        function updateOrderStatus(orderId, status) {
+            // 实际应用中应该通过AJAX请求后端更新订单状态
+            // 这里为了演示，使用模拟数据
+            
+            // 显示加载状态
+            const statusSelect = document.querySelector(`.order-status-select[data-id="${orderId}"]`);
+            if (statusSelect) {
+                statusSelect.disabled = true;
+            }
+            
+            // 模拟更新请求
+            setTimeout(() => {
+                if (statusSelect) {
+                    statusSelect.disabled = false;
+                    showToast('订单状态已更新');
+                }
+            }, 800);
+        }
+        
+        // 结算功能
+        checkoutBtn.addEventListener('click', () => {
+            if (!currentUser) {
+                toggleAuthModal(true);
+                return;
+            }
+            
+            if (cart.length === 0) {
+                showToast('购物车为空');
+                return;
+            }
+            
+            // 显示加载状态
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> 结算中...';
+            
+            // 提交订单
+            fetch('api/orders.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(cart)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 清空购物车
+                    cart = [];
+                    updateCartUI();
+                    
+                    // 隐藏购物车
+                    toggleCart(false);
+                    
+                    // 显示成功提示
+                    showToast('订单创建成功');
+                    
+                    // 跳转到订单详情页
+                    loadOrderDetails(data.data.id);
+                } else {
+                    showToast('订单创建失败');
+                }
+                
+                // 恢复按钮状态
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = '结算';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('订单创建失败');
+                
+                // 恢复按钮状态
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = '结算';
+            });
+        });
+    </script>
+</body>
+</html>    
